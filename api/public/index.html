@@ -1251,6 +1251,15 @@
       }
       const water_level = Number(rawWater);
 
+      
+      // 🔥 GA4 EVENT – đặt ở đây
+      gtag('event', 'add_place_submit', {
+        water_level: water_level,
+        content_length: name,
+        lat: pendingAddLatLng.lat,
+        lng: pendingAddLatLng.lng,
+      });
+
       const payload = {
         name,
         water_level,
