@@ -887,9 +887,13 @@
   <script>
     const isMobile = window.innerWidth <= 768;
 
+  // Nha Trang
+  const NHA_TRANG_CENTER = [12.238, 109.196];
+  const NHA_TRANG_ZOOM   = isMobile ? 12 : 13;
+
     const map = L.map('map', {
       zoomControl: false
-    }).setView([12.238, 109.196], isMobile ? 11 : 12);
+    }).setView(NHA_TRANG_CENTER, NHA_TRANG_ZOOM);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -1000,9 +1004,9 @@
       visibleCountEl.textContent = filtered.features.length;
       totalCountEl.textContent = allFeatures.features.length;
 
-      if (filtered.features.length > 0) {
-        map.fitBounds(currentLayer.getBounds(), { padding: [40, 40] });
-      }
+      // if (filtered.features.length > 0) {
+      //   map.fitBounds(currentLayer.getBounds(), { padding: [40, 40] });
+      // }
     }
 
     async function loadPlaces() {
