@@ -697,6 +697,31 @@
         flex-direction: column;
       }
     }
+    .field-input {
+      height: 46px;
+      padding: 10px 14px;
+      border-radius: 10px;
+    }
+    .field-textarea {
+      width: 100%;
+      min-height: 60px;
+      max-height: 180px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      resize: vertical;        /* cho phép kéo chiều cao */
+      background: #0f111a;
+      border: 1px solid #2b2d38;
+      color: #fff;
+      font-size: 15px;
+      line-height: 22px;
+      box-sizing: border-box;
+    }
+
+    .field-textarea:focus {
+      border-color: #00c8ff;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(0,200,255,0.2);
+    }
   </style>
 </head>
 <body>
@@ -845,7 +870,7 @@
           </div>
 
           <!-- Hàng 1: Nội dung + Vị trí -->
-          <div class="field-row-2">
+          <!-- <div class="field-row-2">
             <div class="field-col field-col-2">
               <label class="field">
                 <span class="field-label">Nội dung</span>
@@ -866,6 +891,33 @@
                   <span id="lngDisplay">Lng: -</span>
                 </div>
               </div>
+            </div>
+          </div> -->
+          <!-- <label class="field">
+            <span class="field-label">Nội dung</span>
+            <input
+              id="placeNameInput"
+              class="field-input"
+              type="text"
+              placeholder="Ví dụ: Anh em cố lên 💚"
+            />
+          </label> -->
+
+          <label class="field">
+            <span class="field-label">Nội dung</span>
+            <textarea
+              id="placeNameInput"
+              class="field-textarea"
+              placeholder="Ví dụ: Anh em cố lên 💚"
+            ></textarea>
+          </label>
+
+          <!-- VỊ TRÍ CỦA BẠN – DƯỚI NỘI DUNG -->
+          <div class="field">
+            <span class="field-label">Vị trí của bạn</span>
+            <div class="coord-text">
+              <span id="latDisplay">Lat: -</span><br/>
+              <span id="lngDisplay">Lng: -</span>
             </div>
           </div>
 
