@@ -3,17 +3,33 @@ const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
 
+const isProd = process.env.NODE_ENV === 'production';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Kết nối Postgres
-const pool = new Pool({
-  host: process.env.PGHOST || 'db',
-  port: process.env.PGPORT || 5432,
-  database: process.env.PGDATABASE || 'landmap',
-  user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'postgres',
-});
+// const pool = new Pool({
+//   host: process.env.PGHOST || 'db',
+//   port: process.env.PGPORT || 5432,
+//   database: process.env.PGDATABASE || 'landmap',
+//   user: process.env.PGUSER || 'postgres',
+//   password: process.env.PGPASSWORD || 'postgres',
+// });
+
+const pool = new Pool(
+  isProd
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+      }
+    : {
+        host: process.env.PGHOST || 'db',
+        port: process.env.PGPORT || 5432,
+        user: process.env.PGUSER || 'postgres',
+        password: process.env.PGPASSWORD || 'postgres',
+        database: process.env.PGDATABASE || 'landmap',
+      }
+);
 
 // Đọc JSON
 app.use(express.json());
