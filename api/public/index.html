@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bản đồ mực nước Nha Trang – Webmap cảnh báo ngập theo thời gian thực</title>
+
+  <!-- Mobile & SEO cơ bản -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
+  <meta
+    name="description"
+    content="Bản đồ mực nước Nha Trang theo thời gian thực. Theo dõi điểm ngập, mức nước (cm) theo khu vực, lọc theo thời gian cập nhật, thêm điểm đo mới ngay trên bản đồ."
+  />
+  <meta
+    name="keywords"
+    content="bản đồ mực nước, ngập lụt Nha Trang, webmap, postgis, leaflet, cảnh báo ngập"
+  />
+  <meta name="robots" content="index,follow" />
+  <meta http-equiv="Content-Language" content="vi" />
+  <!-- TODO: đổi URL & image khi deploy thật -->
+  <link rel="canonical" href="https://example.com/ban-do-muc-nuoc-nha-trang" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta
+    property="og:title"
+    content="Bản đồ mực nước Nha Trang – Cập nhật & cảnh báo theo thời gian thực"
+  />
+  <meta
+    property="og:description"
+    content="Xem nhanh các điểm ngập, mức nước 0–30, &lt;50, &lt;100, &lt;150, &gt;150 cm. Thêm điểm đo mới, lọc theo thời gian cập nhật để hỗ trợ vận hành & ứng phó thiên tai."
+  />
+  <meta property="og:url" content="https://example.com/ban-do-muc-nuoc-nha-trang" />
+  <meta property="og:image" content="https://example.com/static/muc-nuoc-nha-trang-og.jpg" />
+  <meta property="og:locale" content="vi_VN" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta
+    name="twitter:title"
+    content="Bản đồ mực nước Nha Trang – Webmap cảnh báo ngập"
+  />
+  <meta
+    name="twitter:description"
+    content="Theo dõi và cập nhật điểm ngập tại Nha Trang trên bản đồ tương tác, hỗ trợ ra quyết định nhanh."
+  />
+  <meta name="twitter:image" content="https://example.com/static/muc-nuoc-nha-trang-og.jpg" />
+
+  <!-- Schema.org -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Bản đồ mực nước Nha Trang",
+    "url": "https://example.com/ban-do-muc-nuoc-nha-trang",
+    "applicationCategory": "EnvironmentApplication",
+    "operatingSystem": "Web",
+    "description": "Webmap hiển thị mực nước tại Nha Trang, hỗ trợ theo dõi ngập lụt theo thời gian thực.",
+    "inLanguage": "vi-VN"
+  }
+  </script>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: #05070b;
+      color: #e5f0ff;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* -------- TOP BAR -------- */
+    .top-bar {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      pointer-events: none;
+    }
+
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .logo-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: #00c8ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #02040a;
+      font-weight: 700;
+      box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.35);
+      cursor: pointer;
+      flex-shrink: 0;
+      border: none;
+      font-size: 20px;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(8, 12, 20, 0.95);
+      padding: 8px;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      flex: 1;
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .filter-group::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-group-title {
+      margin-right: 6px;
+      font-size: 13px;
+      opacity: 0.85;
+      white-space: nowrap;
+    }
+
+    .btn-filter {
+      border: none;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: transparent;
+      color: #e5f0ff;
+      cursor: pointer;
+      transition: all 0.15s ease-out;
+      white-space: nowrap;
+    }
+
+    .btn-filter:hover {
+      background: rgba(53, 94, 252, 0.25);
+    }
+
+    .btn-filter.active {
+      background: #00c8ff;
+      color: #02040a;
+      font-weight: 600;
+    }
+
+    /* -------- MAP -------- */
+    #map {
+      width: 100%;
+      height: 100%;
+      filter: saturate(1.15) brightness(0.92) contrast(1.08);
+    }
+
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mix-blend-mode: screen;
+    }
+
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 22px;
+      height: 22px;
+      margin-top: -11px;
+      margin-left: -11px;
+      pointer-events: none;
+      z-index: 900;
+    }
+
+    .crosshair::before,
+    .crosshair::after {
+      content: "";
+      position: absolute;
+      background: #00e0ff;
+    }
+
+    .crosshair::before {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      transform: translateX(-50%);
+    }
+
+    .crosshair::after {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      transform: translateY(-50%);
+    }
+
+    .crosshair-dot {
+      position: absolute;
+      inset: 4px;
+      border-radius: 999px;
+      border: 2px solid #00e0ff;
+      background: rgba(1, 12, 20, 0.7);
+      box-shadow: 0 0 10px rgba(0, 224, 255, 0.8);
+    }
+
+    /* -------- LEGEND -------- */
+    .legend {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(5, 9, 16, 0.96);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+      font-size: 12px;
+      z-index: 1000;
+    }
+
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    .legend-dot.very-low  { background: #1E90FF; }  /* 0–30 */
+    .legend-dot.low      { background: #00C1D4; }  /* <50 */
+    .legend-dot.medium   { background: #FFB300; }  /* <100 */
+    .legend-dot.high     { background: #FF6A00; }  /* <150 */
+    .legend-dot.very-high{ background: #D7263D; }  /* >150 */
+
+    .legend-text {
+      white-space: nowrap;
+    }
+
+    .legend-body {
+      opacity: 0.75;
+      font-size: 11px;
+      margin-left: 4px;
+    }
+
+    /* -------- GPS & ADD BLOCK -------- */
+    .btn-gps {
+      position: absolute;
+      right: 14px;
+      bottom: 90px;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: #00c8ff;
+      color: #02040a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0, 200, 255, 0.6);
+      z-index: 1000;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .add-block {
+      position: absolute;
+      right: 14px;
+      bottom: 24px;
+      z-index: 1000;
+
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      background: rgba(5, 9, 16, 0.92);
+      padding: 6px 12px;
+      border-radius: 999px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+
+      font-size: 13px;
+      color: #8ea2c9;
+    }
+
+    .stat-text {
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+
+    .badge-count {
+      font-weight: 600;
+      color: #00e0ff;
+    }
+
+    .btn-add {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: #00c8ff;
+      color: #02040a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      font-size: 22px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 200, 255, 0.5);
+      flex-shrink: 0;
+    }
+
+    .leaflet-control-attribution {
+      background: transparent !important;
+      color: #7b8dab !important;
+    }
+    .leaflet-control-attribution a {
+      color: #9ab5ff !important;
+    }
+
+    /* ---------- Modal thêm địa điểm ---------- */
+    .modal {
+      position: absolute;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-panel {
+      position: relative;
+      width: 460px;
+      max-width: 94%;
+      background: #050812;
+      border-radius: 22px;
+      padding: 18px 18px 14px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(0, 200, 255, 0.12);
+      z-index: 1;
+    }
+
+    .modal-header {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .modal-title-block {
+      font-weight: 700;
+      font-size: 20px;
+      line-height: 1.2;
+      max-width: 80%;
+    }
+
+    .modal-note {
+      font-size: 13px;
+      opacity: 0.78;
+      line-height: 1.35;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      border: none;
+      background: transparent;
+      color: #8ea2c9;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 0;
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .field-input {
+      border-radius: 10px;
+      border: 1px solid rgba(129, 151, 189, 0.5);
+      padding: 6px 8px;
+      background: #02040a;
+      color: #e5f0ff;
+      font-size: 13px;
+    }
+
+    .field-input::placeholder {
+      color: #6c7b9b;
+    }
+
+    .field-hint {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    .field-row-2 {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .field-col {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .field-col-2 {
+      flex: 2;
+    }
+
+    .coord-text {
+      font-size: 12px;
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+
+    /* Group mực nước: radio + pill */
+    .water-level-group {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .water-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .water-option input[type="radio"] {
+      cursor: pointer;
+    }
+
+    .water-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 60px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .level-very-low  { background: rgba(30,144,255,0.16);  color: #1E90FF; }
+    .level-low      { background: rgba(0,193,212,0.16);   color: #00C1D4; }
+    .level-medium   { background: rgba(255,179,0,0.18);   color: #FFB300; }
+    .level-high     { background: rgba(255,106,0,0.18);   color: #FF6A00; }
+    .level-very-high{ background: rgba(215,38,61,0.18);   color: #D7263D; }
+
+    .water-text {
+      opacity: 0.9;
+    }
+
+    .field-hint-range {
+      margin-top: 2px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+      border-radius: 999px;
+      border: none;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-secondary {
+      background: rgba(9, 15, 28, 0.9);
+      color: #c4d3f3;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(28, 37, 60, 0.95);
+    }
+
+    .btn-primary {
+      background: #00c8ff;
+      color: #02040a;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: #00e0ff;
+    }
+
+    /* GPS marker icon */
+    .gps-icon {
+      position: relative;
+    }
+
+    .gps-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0a84ff;
+      border: 2px solid #ffffff;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow:
+        0 0 6px rgba(10, 132, 255, 0.9),
+        0 0 12px rgba(10, 132, 255, 0.35);
+    }
+
+    .gps-ring {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(
+        circle,
+        rgba(10, 132, 255, 0.35) 0%,
+        rgba(10, 132, 255, 0.18) 40%,
+        rgba(10, 132, 255, 0) 70%
+      );
+      animation: gpsPulseStd 1.8s infinite ease-out;
+      pointer-events: none;
+    }
+
+    @keyframes gpsPulseStd {
+      0% {
+        transform: translate(-50%, -50%) scale(0.75);
+        opacity: 0.9;
+      }
+      70% {
+        transform: translate(-50%, -50%) scale(1.25);
+        opacity: 0;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+
+    /* mobile */
+    @media (max-width: 768px) {
+      .top-bar {
+        top: 4px;
+        left: 4px;
+        right: 4px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .top-left {
+        justify-content: space-between;
+      }
+
+      .logo-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        font-size: 18px;
+      }
+
+      .filter-group {
+        padding: 6px 6px;
+      }
+
+      .filter-group-title {
+        display: none;
+      }
+
+      .btn-filter {
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+
+      .legend {
+        left: 8px;
+        bottom: 8px;
+        padding: 8px 9px;
+        border-radius: 12px;
+        font-size: 11px;
+      }
+
+      .btn-gps {
+        right: 10px;
+        bottom: 96px;
+        width: 38px;
+        height: 38px;
+      }
+
+      .add-block {
+        right: 10px;
+        bottom: 20px;
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+
+      .btn-add {
+        width: 30px;
+        height: 30px;
+        font-size: 20px;
+      }
+
+      .crosshair {
+        width: 18px;
+        height: 18px;
+        margin-top: -9px;
+        margin-left: -9px;
+      }
+
+      .modal-panel {
+        width: 94%;
+        padding: 16px 14px 10px;
+      }
+
+      .field-row-2 {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Top bar -->
+    <div class="top-bar">
+      <div class="top-left">
+        <button id="btnReloadMap" class="logo-btn" title="Tải lại bản đồ">
+          ↻
+        </button>
+        <div class="filter-group">
+          <span class="filter-group-title">Lọc theo thời gian cập nhật</span>
+          <button class="btn-filter active" data-range="all">Tất cả</button>
+          <button class="btn-filter" data-range="1h">1h trước</button>
+          <button class="btn-filter" data-range="3h">3 giờ trước</button>
+          <button class="btn-filter" data-range="7h">7 giờ trước</button>
+          <button class="btn-filter" data-range="12h">12h trước</button>
+          <button class="btn-filter" data-range="1d">1 ngày trước</button>
+          <button class="btn-filter" data-range="2d">2 ngày trước</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Grid overlay -->
+    <div class="grid-overlay"></div>
+
+    <!-- Crosshair -->
+    <div class="crosshair">
+      <div class="crosshair-dot"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">Mức nước (cm)</div>
+
+      <div class="legend-item">
+        <span class="legend-dot very-low"></span>
+        <span class="legend-text">
+          0–30 cm: Rất thấp
+          <span class="legend-body">(Đến mắt cá)</span>
+        </span>
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot low"></span>
+        <span class="legend-text">
+          &lt;50 cm: Thấp
+          <span class="legend-body">(Đến đầu gối)</span>
+        </span>
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot medium"></span>
+        <span class="legend-text">
+          &lt;100 cm: Trung bình
+          <span class="legend-body">(Đến bụng)</span>
+        </span>
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot high"></span>
+        <span class="legend-text">
+          &lt;150 cm: Cao
+          <span class="legend-body">(Đến ngực-vai)</span>
+        </span>
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot very-high"></span>
+        <span class="legend-text">
+          &gt;150 cm: Rất cao
+          <span class="legend-body">(Qua đầu)</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- GPS & Add block -->
+    <div class="btn-gps" title="Vị trí của tôi">📍</div>
+
+    <div class="add-block">
+      <span class="stat-text">
+        <span id="visibleCount" class="badge-count">0</span>
+        / <span id="totalCount">0</span>
+      </span>
+
+      <button class="btn-add" title="Thêm địa điểm">+</button>
+    </div>
+
+    <!-- Modal thêm địa điểm -->
+    <div id="addPlaceModal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-panel">
+        <div class="modal-header">
+          <div class="modal-title-block">
+            Cập nhật tình hình mực nước ở nơi bạn
+          </div>
+          <div class="modal-note">
+            Mỗi đóng góp của bạn sẽ giúp người dân biết được mức nước hiện trạng tại khu vực.
+          </div>
+          <button type="button" class="modal-close-btn" id="closeAddPlaceBtn">×</button>
+        </div>
+
+        <form id="addPlaceForm" class="modal-body">
+
+          
+          <!-- Hàng 2: Mực nước radio + pill -->
+          <div class="field">
+            <span class="field-label">Mực nước (cm)</span>
+            <div class="water-level-group">
+              <label class="water-option">
+                <input type="radio" name="waterLevelOption" value="30" />
+                <span class="water-pill level-very-low">0–30</span>
+                <span class="water-text">Rất thấp (Đến mắt cá)</span>
+              </label>
+
+              <label class="water-option">
+                <input type="radio" name="waterLevelOption" value="49" />
+                <span class="water-pill level-low">&lt;50</span>
+                <span class="water-text">Thấp (Đến đầu gối)</span>
+              </label>
+
+              <label class="water-option">
+                <input type="radio" name="waterLevelOption" value="99" />
+                <span class="water-pill level-medium">&lt;100</span>
+                <span class="water-text">Trung bình (Đến bụng)</span>
+              </label>
+
+              <label class="water-option">
+                <input type="radio" name="waterLevelOption" value="149" />
+                <span class="water-pill level-high">&lt;150</span>
+                <span class="water-text">Cao (Đến ngực-vai)</span>
+              </label>
+
+              <label class="water-option">
+                <input type="radio" name="waterLevelOption" value="200" />
+                <span class="water-pill level-very-high">&gt;150</span>
+                <span class="water-text">Rất cao(Qua đầu)</span>
+              </label>
+            </div>
+            <!-- <div class="field-hint field-hint-range">
+              0–30: rất thấp, &lt;50: thấp, &lt;100: trung bình, &lt;150: cao, &gt;150: rất cao
+            </div> -->
+          </div>
+
+          <!-- Hàng 1: Nội dung + Vị trí -->
+          <div class="field-row-2">
+            <div class="field-col field-col-2">
+              <label class="field">
+                <span class="field-label">Nội dung</span>
+                <input
+                  id="placeNameInput"
+                  class="field-input"
+                  type="text"
+                  placeholder="Ví dụ: Anh em cố lên 💚"
+                />
+              </label>
+            </div>
+
+            <div class="field-col">
+              <div class="field">
+                <span class="field-label">Vị trí của bạn</span>
+                <div class="coord-text">
+                  <span id="latDisplay">Lat: -</span><br/>
+                  <span id="lngDisplay">Lng: -</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="cancelAddPlaceBtn">Hủy</button>
+            <button type="submit" class="btn-primary">Gửi</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <script>
+    const isMobile = window.innerWidth <= 768;
+
+    const map = L.map('map', {
+      zoomControl: false
+    }).setView([12.238, 109.196], isMobile ? 11 : 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let allFeatures = null;
+    let currentLayer = null;
+    let currentRange = 'all';
+
+    const visibleCountEl = document.getElementById('visibleCount');
+    const totalCountEl = document.getElementById('totalCount');
+
+    // Phân màu theo 5 mức nước
+    function getColorByWaterLevel(cm) {
+      if (cm == null) return '#9e9e9e';
+      if (cm <= 30) return '#1E90FF';   // rất thấp
+      if (cm < 50)  return '#00C1D4';   // thấp
+      if (cm < 100) return '#FFB300';   // trung bình
+      if (cm < 150) return '#FF6A00';   // cao
+      return '#D7263D';                 // rất cao
+    }
+
+    function getCurrentGPS() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject("Thiết bị không hỗ trợ GPS.");
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            resolve({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude
+            });
+          },
+          err => reject("Không lấy được vị trí GPS."),
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      });
+    }
+
+
+    function filterByTime(feature) {
+      if (currentRange === 'all') return true;
+
+      const measuredAt = feature.properties.measured_at;
+      if (!measuredAt) return false;
+
+      const t = new Date(measuredAt).getTime();
+      const now = Date.now();
+      const diffHours = (now - t) / (1000 * 60 * 60);
+
+      switch (currentRange) {
+        case '1h': return diffHours <= 1;
+        case '3h': return diffHours <= 3;
+        case '7h': return diffHours <= 7;
+        case '12h': return diffHours <= 12;
+        case '1d': return diffHours <= 24;
+        case '2d': return diffHours <= 48;
+        default: return true;
+      }
+    }
+
+    function renderLayer() {
+      if (!allFeatures) return;
+
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+
+      const filtered = {
+        type: 'FeatureCollection',
+        features: allFeatures.features.filter(filterByTime)
+      };
+
+      currentLayer = L.geoJSON(filtered, {
+        pointToLayer: function (feature, latlng) {
+          const cm = feature.properties.water_level;
+          const color = getColorByWaterLevel(cm);
+          return L.circleMarker(latlng, {
+            radius: 3.5,
+            color: color,
+            weight: 1.2,
+            fillColor: color,
+            fillOpacity: 0.9
+          });
+        },
+        onEachFeature: function (feature, layer) {
+          const p = feature.properties || {};
+          const cm = p.water_level != null ? p.water_level + ' cm' : 'Không rõ';
+          const t = p.measured_at
+            ? new Date(p.measured_at).toLocaleString('vi-VN')
+            : 'Không rõ';
+
+          const popupHtml = `
+            <div style="font-size: 13px; min-width: 160px;">
+              <div style="font-weight:600;margin-bottom:4px;">${p.name || 'Không tên'}</div>
+              <div><strong>Mực nước:</strong> ${cm}</div>
+              <div><strong>Thời gian:</strong> ${t}</div>
+            </div>
+          `;
+          layer.bindPopup(popupHtml);
+        }
+      }).addTo(map);
+
+      visibleCountEl.textContent = filtered.features.length;
+      totalCountEl.textContent = allFeatures.features.length;
+
+      if (filtered.features.length > 0) {
+        map.fitBounds(currentLayer.getBounds(), { padding: [40, 40] });
+      }
+    }
+
+    async function loadPlaces() {
+      try {
+        const res = await fetch('/api/places');
+        const data = await res.json();
+        allFeatures = data;
+        if (!allFeatures || !allFeatures.features) {
+          allFeatures = { type: 'FeatureCollection', features: [] };
+        }
+        totalCountEl.textContent = allFeatures.features.length;
+        renderLayer();
+      } catch (err) {
+        console.error('Error loading GeoJSON', err);
+      }
+    }
+
+    loadPlaces();
+
+    // Filter buttons
+    document.querySelectorAll('.btn-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentRange = btn.dataset.range;
+        renderLayer();
+      });
+    });
+
+    // Reload map button
+    document.getElementById('btnReloadMap').addEventListener('click', () => {
+      // map.setView([12.238, 109.196], isMobile ? 11 : 12);
+      loadPlaces();
+    });
+
+    // GPS
+    let gpsMarker = null;
+    let autoCenter = true;
+    let gpsLatLng = null;
+
+    document.querySelector('.btn-gps').addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        alert('Thiết bị không hỗ trợ GPS');
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          if (gpsMarker) map.removeLayer(gpsMarker);
+
+          const gpsIcon = L.divIcon({
+            className: 'gps-icon',
+            html: `
+              <div class="gps-dot"></div>
+              <div class="gps-ring"></div>
+            `,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+          });
+
+          gpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+
+          map.setView([lat, lng], 15, { animate: true });
+        },
+        err => {
+          console.error('GPS error:', err);
+          alert('Không lấy được vị trí hiện tại (hãy bật GPS & truy cập HTTPS).');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    });
+
+    // Modal thêm địa điểm
+    let pendingAddLatLng = null;
+
+    const addPlaceModal = document.getElementById('addPlaceModal');
+    const placeNameInput = document.getElementById('placeNameInput');
+    const latDisplay = document.getElementById('latDisplay');
+    const lngDisplay = document.getElementById('lngDisplay');
+    const addPlaceForm = document.getElementById('addPlaceForm');
+    const closeAddPlaceBtn = document.getElementById('closeAddPlaceBtn');
+    const cancelAddPlaceBtn = document.getElementById('cancelAddPlaceBtn');
+    const waterLevelRadios = document.querySelectorAll('input[name="waterLevelOption"]');
+
+    // function openAddPlaceModal(latlng) {
+    //   pendingAddLatLng = latlng;
+
+    //   latDisplay.textContent = 'Lat: ' + latlng.lat.toFixed(5);
+    //   lngDisplay.textContent = 'Lng: ' + latlng.lng.toFixed(5);
+
+    //   placeNameInput.value = '';
+    //   waterLevelRadios.forEach(r => (r.checked = false));
+
+    //   addPlaceModal.classList.remove('hidden');
+    //   placeNameInput.focus();
+    // }
+
+    // async function openAddPlaceModal() {
+    //   try {
+    //     const gps = await getCurrentGPS();
+    //     pendingAddLatLng = gps;
+
+    //     document.getElementById("modalLat").textContent = gps.lat.toFixed(6);
+    //     document.getElementById("modalLng").textContent = gps.lng.toFixed(6);
+
+    //     addPlaceModal.classList.add("open");
+    //   } catch (e) {
+    //     alert("Không lấy được GPS. Vui lòng bật định vị.");
+    //   }
+    // }
+
+    function openAddPlaceModal() {
+      if (!navigator.geolocation) {
+        alert('Thiết bị không hỗ trợ GPS.');
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const latlng = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          };
+
+          pendingAddLatLng = latlng;
+
+          latDisplay.textContent = 'Lat: ' + latlng.lat.toFixed(5);
+          lngDisplay.textContent = 'Lng: ' + latlng.lng.toFixed(5);
+
+          placeNameInput.value = '';
+          waterLevelRadios.forEach(r => (r.checked = false));
+
+          addPlaceModal.classList.remove('hidden');
+          placeNameInput.focus();
+        },
+        (err) => {
+          console.error('GPS error:', err);
+          alert('Không lấy được vị trí hiện tại. Hãy bật GPS và thử lại.');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    function closeAddPlaceModal() {
+      addPlaceModal.classList.add('hidden');
+      pendingAddLatLng = null;
+    }
+
+    closeAddPlaceBtn.addEventListener('click', closeAddPlaceModal);
+    cancelAddPlaceBtn.addEventListener('click', closeAddPlaceModal);
+    addPlaceModal.querySelector('.modal-backdrop').addEventListener('click', closeAddPlaceModal);
+
+    addPlaceForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!pendingAddLatLng) return;
+
+      // Nội dung: optional, rỗng thì gán default
+      const name =
+        placeNameInput.value.trim() || 'Người dân cập nhật mực nước';
+
+      // Lấy mực nước từ radio
+      let rawWater = null;
+      waterLevelRadios.forEach(r => {
+        if (r.checked) rawWater = r.value;
+      });
+
+      if (!rawWater) {
+        alert('Vui lòng chọn mức nước.');
+        return;
+      }
+      const water_level = Number(rawWater);
+
+      const payload = {
+        name,
+        water_level,
+        lat: pendingAddLatLng.lat,
+        lng: pendingAddLatLng.lng,
+        measured_at: new Date().toISOString()
+      };
+
+      try {
+        const res = await fetch('/api/places', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          console.error('POST /api/places failed', res.status);
+          alert('Không lưu được địa điểm. Thử lại sau.');
+          return;
+        }
+
+        const feature = await res.json();
+
+        if (allFeatures && allFeatures.features) {
+          allFeatures.features.push(feature);
+        } else {
+          allFeatures = { type: 'FeatureCollection', features: [feature] };
+        }
+        totalCountEl.textContent = allFeatures.features.length;
+        renderLayer();
+
+        closeAddPlaceModal();
+      } catch (err) {
+        console.error('Error POST /api/places', err);
+        alert('Có lỗi khi lưu địa điểm.');
+      }
+    });
+
+    // nút +
+    document.querySelector('.btn-add').addEventListener('click', () => {
+      const center = map.getCenter();
+      openAddPlaceModal();
+    });
+
+    // nhấn chuột phải trên map
+    map.on('contextmenu', () => {
+      openAddPlaceModal();
+    });
+
+    // Auto mở popup khi load map
+    map.whenReady(() => {
+      // const center = map.getCenter();
+      openAddPlaceModal();
+    });
+
+    // Mỗi 30s nếu popup đang đóng thì mở lại
+    setInterval(() => {
+      if (addPlaceModal.classList.contains('hidden')) {
+        // const center = map.getCenter();
+        openAddPlaceModal();
+      }
+    }, 10000);
+  </script>
+</body>
+</html>
