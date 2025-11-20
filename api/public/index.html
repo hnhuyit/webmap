@@ -1067,7 +1067,10 @@
           const t = p.measured_at
             ? new Date(p.measured_at).toLocaleString('vi-VN')
             : 'Không rõ';
-
+            
+          const [lng, lat] = feature.geometry.coordinates;
+          props.lat = lat;
+          props.lng = lng;
           const popupHtml = `
             <div style="font-size: 13px; min-width: 160px;">
               <div style="font-weight:600;margin-bottom:4px;">${p.name || 'Không tên'}</div>
