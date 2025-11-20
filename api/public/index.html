@@ -1067,10 +1067,8 @@
           const t = p.measured_at
             ? new Date(p.measured_at).toLocaleString('vi-VN')
             : 'Không rõ';
-            
+
           const [lng, lat] = feature.geometry.coordinates;
-          props.lat = lat;
-          props.lng = lng;
           const popupHtml = `
             <div style="font-size: 13px; min-width: 160px;">
               <div style="font-weight:600;margin-bottom:4px;">${p.name || 'Không tên'}</div>
@@ -1079,7 +1077,7 @@
               <br/>
               <br/>
               <a 
-                href="https://www.google.com/maps/dir/?api=1&destination=${props.lat},${props.lng}" 
+                href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" 
                 target="_blank"
                 style="
                   display:inline-block;
