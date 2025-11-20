@@ -1220,7 +1220,27 @@
     //   }
     // }
 
-    function openAddPlaceModal() {
+    function openAddPlaceModal(latlngFromMap = null) {
+
+      // Nếu có tọa độ từ map (nhấn giữ / right click) thì dùng luôn, không cần GPS
+      if (latlngFromMap) {
+        const latlng = {
+          lat: latlngFromMap.lat,
+          lng: latlngFromMap.lng
+        };
+
+        pendingAddLatLng = latlng;
+
+        latDisplay.textContent = 'Lat: ' + latlng.lat.toFixed(5);
+        lngDisplay.textContent = 'Lng: ' + latlng.lng.toFixed(5);
+
+        placeNameInput.value = '';
+        waterLevelRadios.forEach(r => (r.checked = false));
+
+        addPlaceModal.classList.remove('hidden');
+        placeNameInput.focus();
+        return;
+      }
       if (!navigator.geolocation) {
         alert('Thiết bị không hỗ trợ GPS.');
         return;
@@ -1345,8 +1365,8 @@
     });
 
     // nhấn chuột phải trên map
-    map.on('contextmenu', () => {
-      openAddPlaceModal();
+    map.on('contextmenu', (e) => {
+      openAddPlaceModal(e.latlng);  // right-click dùng toạ độ điểm click
     });
 
     // Auto mở popup khi load map
@@ -1362,6 +1382,49 @@
         openAddPlaceModal();
       }
     }, 15000);
+
+    // ------- LONG PRESS TO ADD PLACE (DÙNG TỌA ĐỘ ĐIỂM NHẤN) -------
+    const LONG_PRESS_DURATION = 600; // ms
+    let longPressTimer = null;
+    let longPressLatLng = null;
+
+    function startLongPressTimer(latlng) {
+      longPressLatLng = latlng;
+
+      if (longPressTimer) clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null;
+
+        if (longPressLatLng) {
+          openAddPlaceModal(longPressLatLng);  // mở form với toạ độ điểm nhấn
+          longPressLatLng = null;
+        }
+      }, LONG_PRESS_DURATION);
+    }
+
+    function cancelLongPressTimer() {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      longPressLatLng = null;
+    }
+
+    // Desktop: nhấn giữ chuột
+    map.on('mousedown', (e) => {
+      startLongPressTimer(e.latlng);
+    });
+    map.on('mouseup', cancelLongPressTimer);
+    map.on('mousemove', cancelLongPressTimer);
+    map.on('dragstart', cancelLongPressTimer);
+
+    // Mobile: chạm giữ
+    map.on('touchstart', (e) => {
+      // Leaflet touch event cũng có e.latlng
+      startLongPressTimer(e.latlng);
+    });
+    map.on('touchend', cancelLongPressTimer);
+    map.on('touchmove', cancelLongPressTimer);
   </script>
 </body>
 </html>
