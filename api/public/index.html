@@ -731,6 +731,17 @@
       outline: none;
       box-shadow: 0 0 0 2px rgba(0,200,255,0.2);
     }
+    .gmaps-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 14px;
+      color: #00c8ff;
+      text-decoration: none;
+    }
+
+    .gmaps-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -828,11 +839,11 @@
       <div class="modal-panel">
         <div class="modal-header">
           <div class="modal-title-block">
-            Cập nhật tình hình mực nước ở nơi bạn
+            Cập nhật tình hình mực nước và thông tin cứu trợ ở nơi bạn
           </div>
-          <div class="modal-note">
+          <!-- <div class="modal-note">
             Mỗi đóng góp của bạn sẽ giúp người dân biết được mức nước hiện trạng tại khu vực.
-          </div>
+          </div> -->
           <button type="button" class="modal-close-btn" id="closeAddPlaceBtn">×</button>
         </div>
 
@@ -917,7 +928,7 @@
             <textarea
               id="placeNameInput"
               class="field-textarea"
-              placeholder="Ví dụ: Anh em cố lên 💚"
+              placeholder="Nội dung kèm số điện thoại"
             ></textarea>
           </label>
 
@@ -929,6 +940,12 @@
               <span id="lngDisplay">Lng: -</span>
             </div>
           </div>
+          <a id="gmapsLink" 
+            href="#" 
+            target="_blank" 
+            class="gmaps-link">
+            🧭 Mở Google Maps dẫn đường
+          </a>
 
           <div class="modal-footer">
             <button type="button" class="btn-secondary" id="cancelAddPlaceBtn">Hủy</button>
@@ -1056,6 +1073,22 @@
               <div style="font-weight:600;margin-bottom:4px;">${p.name || 'Không tên'}</div>
               <div><strong>Mực nước:</strong> ${cm}</div>
               <div><strong>Thời gian:</strong> ${t}</div>
+              <br/>
+              <br/>
+              <a 
+                href="https://www.google.com/maps/dir/?api=1&destination=${props.lat},${props.lng}" 
+                target="_blank"
+                style="
+                  display:inline-block;
+                  background:#1e90ff; 
+                  color:white; 
+                  padding:6px 10px; 
+                  border-radius:6px; 
+                  text-decoration:none;
+                "
+              >
+                📍 Dẫn đường bằng Google Maps
+              </a>
             </div>
           `;
           layer.bindPopup(popupHtml);
@@ -1198,6 +1231,10 @@
             lat: pos.coords.latitude,
             lng: pos.coords.longitude
           };
+
+          
+          document.getElementById("gmapsLink").href =
+            `https://www.google.com/maps?q=${latlng.lat},${latlng.lng}`;
 
           pendingAddLatLng = latlng;
 
