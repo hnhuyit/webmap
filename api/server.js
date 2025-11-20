@@ -2,10 +2,28 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const Airtable = require('airtable');
 
 const isProd = process.env.NODE_ENV === 'production';
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
+// --- Airtable config ---
+const {
+  AIRTABLE_API_KEY,
+  AIRTABLE_BASE_ID,
+  AIRTABLE_TABLE_NAME
+} = process.env;
+
+let airtableBase = null;
+if (AIRTABLE_API_KEY && AIRTABLE_BASE_ID && AIRTABLE_TABLE_NAME) {
+  Airtable.configure({ apiKey: AIRTABLE_API_KEY });
+  airtableBase = Airtable.base(AIRTABLE_BASE_ID);
+  console.log('Airtable integration enabled');
+} else {
+  console.log('Airtable env not set, skipping Airtable integration');
+}
 
 // Kết nối Postgres
 // const pool = new Pool({
@@ -108,6 +126,25 @@ app.post('/api/places', async (req, res) => {
     const params = [name, lng, lat, waterLevelNum, measuredAt];
     const result = await pool.query(sql, params);
     const row = result.rows[0];
+
+    // --- PUSH SANG AIRTABLE (fire-and-forget) ---
+    if (airtableBase) {
+      airtableBase(AIRTABLE_TABLE_NAME).create([
+        {
+          fields: {
+            name: row.name,
+            water_level: row.water_level,
+            Lat: row.lat,
+            Lng: row.lng,
+            measured_at: row.measured_at
+          }
+        }
+      ], (err) => {
+        if (err) {
+          console.error('Airtable create error:', err.message);
+        }
+      });
+    }
 
     const feature = {
       type: 'Feature',
