@@ -134,8 +134,8 @@ app.post('/api/places', async (req, res) => {
           fields: {
             name: row.name,
             water_level: row.water_level,
-            Lat: row.lat,
-            Lng: row.lng,
+            Lat: lat,
+            Lng: lng,
             measured_at: row.measured_at
           }
         }
